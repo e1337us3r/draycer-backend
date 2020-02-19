@@ -1,0 +1,29 @@
+version: "3.7"
+services:
+  db:
+    image: postgres:12-alpine
+    volumes:
+      - postaci-db-v:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    ports:
+      - 7879:5432
+  redis:
+    image: redis:5-alpine
+    ports:
+      - 7880:6379
+  api:
+    depends_on:
+      - db
+      - redis
+    build:
+      dockerfile: "./build/Dockerfile.dev"
+      context: ../
+    image: postaci
+    volumes:
+      - ../src:/tmp/src
+      - ../.env:/tmp/.env
+    ports:
+      - 7878:7878
+volumes:
+  postaci-db-v:

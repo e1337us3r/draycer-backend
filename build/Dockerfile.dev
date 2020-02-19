@@ -1,0 +1,8 @@
+FROM node:12-alpine
+WORKDIR /usr/app
+COPY package.json yarn.lock ./
+COPY src .
+RUN yarn install
+EXPOSE 7878
+CMD [ "yarn", "dev" ]
+
