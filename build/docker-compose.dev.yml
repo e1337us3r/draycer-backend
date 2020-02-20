@@ -21,8 +21,8 @@ services:
       context: ../
     image: postaci
     volumes:
-      - ../src:/tmp/src
-      - ../.env:/tmp/.env
+      - ../src:/usr/app/src
+      - ../.env:/usr/app/.env
     ports:
       - 7878:7878
 volumes:

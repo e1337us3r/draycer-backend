@@ -3,6 +3,8 @@ const http = require("http");
 const SocketIo = require("socket.io");
 const BodyParser = require("body-parser");
 const Cors = require("cors");
+const router = require("./core/router");
+const CONFIG = require("./core/config");
 
 const app = Express();
 const server = http.createServer(app);
@@ -16,14 +18,12 @@ app.use(
   })
 );
 
-app.get("/", async (req, res) => {
-  res.send("hello world");
-});
+app.use(router);
 
 io.on("connection", async socket => {
   console.log("socket connected");
 });
 
-server.listen(7878, () => {
-  console.log("Server listening on port 7878");
+server.listen(CONFIG.port, () => {
+  console.log(`Server listening on port ${CONFIG.port}`);
 });
