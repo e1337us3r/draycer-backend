@@ -5,6 +5,9 @@ const BodyParser = require("body-parser");
 const Cors = require("cors");
 const router = require("./core/router");
 const CONFIG = require("./core/config");
+const Logger = require("./core/logger");
+const LoggerMiddleware = require("./middleware/LoggerMiddleware");
+const AuthMiddleware = require("./middleware/AuthMiddleware");
 
 const app = Express();
 const server = http.createServer(app);
@@ -18,6 +21,8 @@ app.use(
   })
 );
 
+app.use(LoggerMiddleware);
+app.use(AuthMiddleware);
 app.use(router);
 
 io.on("connection", async socket => {
@@ -25,5 +30,5 @@ io.on("connection", async socket => {
 });
 
 server.listen(CONFIG.port, () => {
-  console.log(`Server listening on port ${CONFIG.port}`);
+  Logger.info(`Server listening on port ${CONFIG.port}`);
 });
