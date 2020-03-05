@@ -8,7 +8,7 @@ const CONFIG = {
   logger: {
     base: null,
     level: isProd ? "info" : "debug",
-    prettyPrint: !isProd
+    prettyPrint: false
   },
   port: process.env.PORT ? Number(process.env.PORT) : 7878,
   isProd,

@@ -8,11 +8,13 @@ const CONFIG = require("./core/config");
 const Logger = require("./core/logger");
 const LoggerMiddleware = require("./middleware/LoggerMiddleware");
 const AuthMiddleware = require("./middleware/AuthMiddleware");
+const Socket = require("./core/socketmaster");
 
 const app = Express();
 const server = http.createServer(app);
 const io = SocketIo(server);
 
+Socket.init(io);
 app.use(Cors());
 app.use(BodyParser.json());
 app.use(
@@ -23,12 +25,8 @@ app.use(
 
 app.use(LoggerMiddleware);
 app.use(AuthMiddleware);
-app.use(router);
+app.use("/api", router);
 
-io.on("connection", async socket => {
-  console.log("socket connected");
-});
-
-server.listen(CONFIG.port, () => {
+server.listen(CONFIG.port, "0.0.0.0",() => {
   Logger.info(`Server listening on port ${CONFIG.port}`);
 });
