@@ -3,7 +3,20 @@ const scenes = [];
 
 const SceneRepository = {
   async getAll(user_id) {
-    const results = scenes.filter(scene => scene.user_id === user_id);
+    const results = scenes
+      .filter(scene => scene.user_id === user_id)
+      .map(scene => {
+        const job = Rendero.getRenderJob(scene.id);
+
+        scene.status = job.status;
+
+        return {
+          ...scene,
+          render: job.render,
+          renderedPixelCount: job.renderedPixelCount,
+          pixelCount: job.pixelCount
+        };
+      });
 
     return { results, count: results.length };
   },
@@ -17,7 +30,8 @@ const SceneRepository = {
         return {
           ...scene,
           render: job.render,
-          renderedPixelCount: job.renderedPixelCount
+          renderedPixelCount: job.renderedPixelCount,
+          pixelCount: job.pixelCount
         };
       }
 

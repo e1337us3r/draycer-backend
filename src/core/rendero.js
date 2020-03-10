@@ -2,14 +2,14 @@ const Jimp = require("jimp");
 const Logger = require("./logger");
 const { workerPool, registerNewSocketListener } = require("./socketmaster");
 
-const WIDTH = 1280;
-const HEIGHT = 720;
 const waitingRenderQueue = [];
 const renderJobs = {};
 
 const Rendero = {
   addRenderJob: (id, scene) => {
     const canRender = workerPool.length > 0;
+    const WIDTH = scene.WIDTH;
+    const HEIGHT = scene.HEIGHT;
 
     const job = {
       id,
@@ -18,7 +18,9 @@ const Rendero = {
       render: null,
       pixelCount: WIDTH * HEIGHT,
       renderedPixelCount: 0,
-      status: "waiting_workers"
+      status: "waiting_workers",
+      WIDTH,
+      HEIGHT
     };
 
     Logger.debug({ event: "JOB_CREATED", id: job.id });
@@ -30,7 +32,7 @@ const Rendero = {
   },
   startRender: job => {
     Logger.debug({ event: "JOB_STARTING", id: job.id });
-    const { scene, id } = job;
+    const { scene, id, WIDTH, HEIGHT } = job;
     job.status = "rendering";
 
     new Jimp(WIDTH, HEIGHT, 0x000000ff, (err, image) => {
@@ -90,7 +92,7 @@ const Rendero = {
         );
       }
 
-      job.renderedPixelCount += WIDTH;
+      job.renderedPixelCount += renders.length;
 
       if (job.renderedPixelCount === job.pixelCount) {
         // render has finished
