@@ -16,7 +16,9 @@ const io = SocketIo(server);
 
 Socket.init(io);
 app.use(Cors());
-app.use(BodyParser.json());
+
+app.use(BodyParser.json({ limit: "50mb" }));
+app.use(BodyParser.urlencoded({ limit: "50mb", extended: true }));
 app.use(
   BodyParser.urlencoded({
     extended: true
@@ -27,6 +29,6 @@ app.use(LoggerMiddleware);
 app.use(AuthMiddleware);
 app.use("/api", router);
 
-server.listen(CONFIG.port, "0.0.0.0",() => {
+server.listen(CONFIG.port, "0.0.0.0", () => {
   Logger.info(`Server listening on port ${CONFIG.port}`);
 });

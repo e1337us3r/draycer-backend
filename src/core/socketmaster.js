@@ -1,4 +1,5 @@
 const newSocketListeners = [];
+const disconnectedSocketListeners = [];
 
 const SocketMaster = {
   workerPool: [],
@@ -11,15 +12,23 @@ const SocketMaster = {
 
       socket.on("disconnect", () => {
         console.log("disconnected");
-        // remove socket from pool
-        this.workerPool.splice(this.workerPool.indexOf(socket), 1);
+        this.socketDisconnected(socket);
       });
-
     });
   },
-  registerNewSocketListener(listener) {
-    newSocketListeners.push(listener);
+  registerNewSocketListener(newSocketListener, disconnectedSocketListener) {
+    newSocketListeners.push(newSocketListener);
+    disconnectedSocketListeners.push(disconnectedSocketListener);
   },
+  socketDisconnected(socket) {
+    // remove socket from pool
+    this.workerPool.splice(this.workerPool.indexOf(socket), 1);
+
+    for (const disconnectedSocketListener of disconnectedSocketListeners) {
+      disconnectedSocketListener(socket);
+    }
+  },
+
   newSocketConnected(socket) {
     this.workerPool.push(socket);
 
