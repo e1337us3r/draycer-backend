@@ -4,8 +4,8 @@ const { workerPool, registerNewSocketListener } = require("./socketmaster");
 
 const waitingRenderQueue = [];
 const renderJobs = {};
-const BLOCK_WIDTH = 10;
-const BLOCK_HEIGHT = 10;
+const BLOCK_WIDTH = 50;
+const BLOCK_HEIGHT = 50;
 
 const Rendero = {
   addRenderJob: (id, scene) => {
@@ -29,8 +29,8 @@ const Rendero = {
 
     Logger.info({ event: "JOB_CREATED", id: job.id });
 
-    for (let y = 0; y < HEIGHT; y += 10) {
-      for (let x = 0; x < WIDTH; x += 10) {
+    for (let y = 0; y < HEIGHT; y += BLOCK_HEIGHT) {
+      for (let x = 0; x < WIDTH; x += BLOCK_WIDTH) {
         job.waitingBlocks.push({
           p1: { x, y },
           p2: { x: x + BLOCK_WIDTH, y: y + BLOCK_HEIGHT }
@@ -94,7 +94,16 @@ const Rendero = {
 
       job.renderedPixelCount += renders.length;
 
-      if (job.renderedPixelCount === job.pixelCount) {
+      Logger.info(
+        `waitingblocks: ${job.waitingBlocks.length}  renderingBlocks: ${
+          Object.keys(job.renderingBlocks).length
+        }`
+      );
+
+      if (
+        job.waitingBlocks.length === 0 &&
+        Object.keys(job.renderingBlocks).length === 0
+      ) {
         // render has finished
         Logger.info({ event: "RENDER_COMPLETED", id: job.id });
 

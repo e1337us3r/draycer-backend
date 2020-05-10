@@ -12,18 +12,6 @@ services:
     image: redis:5-alpine
     ports:
       - 7880:6379
-  api:
-    depends_on:
-      - db
-      - redis
-    build:
-      dockerfile: "./build/Dockerfile.dev"
-      context: ../
-    image: postaci
-    volumes:
-      - ../src:/usr/app/src
-      - ../.env:/usr/app/.env
-    ports:
-      - 7878:7878
+
 volumes:
   postaci-db-v:
