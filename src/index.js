@@ -9,26 +9,33 @@ const Logger = require("./core/logger");
 const LoggerMiddleware = require("./middleware/LoggerMiddleware");
 const AuthMiddleware = require("./middleware/AuthMiddleware");
 const Socket = require("./core/socketmaster");
+const db = require("./db");
+const SceneService = require("./api/scene/v1/scene.service");
 
-const app = Express();
-const server = http.createServer(app);
-const io = SocketIo(server);
+(async () => {
+  const app = Express();
+  const server = http.createServer(app);
+  const io = SocketIo(server);
 
-Socket.init(io);
-app.use(Cors());
+  await db.initializeDb();
+  await SceneService.addAllJobsToQueue();
 
-app.use(BodyParser.json({ limit: "50mb" }));
-app.use(BodyParser.urlencoded({ limit: "50mb", extended: true }));
-app.use(
-  BodyParser.urlencoded({
-    extended: true
-  })
-);
+  Socket.init(io);
+  app.use(Cors());
 
-app.use(LoggerMiddleware);
-app.use(AuthMiddleware);
-app.use("/api", router);
+  app.use(BodyParser.json({ limit: "50mb" }));
+  app.use(BodyParser.urlencoded({ limit: "50mb", extended: true }));
+  app.use(
+    BodyParser.urlencoded({
+      extended: true
+    })
+  );
 
-server.listen(CONFIG.port, "0.0.0.0", () => {
-  Logger.info(`Server listening on port ${CONFIG.port}`);
-});
+  app.use(LoggerMiddleware);
+  app.use(AuthMiddleware);
+  app.use("/api", router);
+
+  server.listen(CONFIG.port, "0.0.0.0", () => {
+    Logger.info(`Server listening on port ${CONFIG.port}`);
+  });
+})();

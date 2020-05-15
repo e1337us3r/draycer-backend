@@ -1,3 +1,4 @@
+const Logger = require("./logger");
 const newSocketListeners = [];
 const disconnectedSocketListeners = [];
 
@@ -7,11 +8,11 @@ const SocketMaster = {
     SocketMaster.io = io;
 
     io.on("connection", socket => {
-      console.log("connected");
+      Logger.info({ event: "WORKER_CONNECTED" });
       this.newSocketConnected(socket);
 
       socket.on("disconnect", () => {
-        console.log("disconnected");
+        Logger.info({ event: "WORKER_DISCONNECTED" });
         this.socketDisconnected(socket);
       });
     });

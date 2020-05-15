@@ -1,59 +1,76 @@
-const Rendero = require("../../../core/rendero");
-const scenes = [];
+const db = require("../../../db");
 
 const SceneRepository = {
   async getAll(user_id) {
-    const results = scenes
-      .filter(scene => scene.user_id === user_id)
-      .map(scene => {
-        const job = Rendero.getRenderJob(scene.id);
-
-        scene.status = job.status;
-
-        return {
-          ...scene,
-          render: job.render,
-          renderedPixelCount: job.renderedPixelCount,
-          pixelCount: job.pixelCount
-        };
-      });
+    /*
+    user_id,
+      id: generateId(),
+      scene,
+      created_at: timestamp,
+      status: "waiting_workers",
+      render_state: {
+        rendered_pixel_count: 0,
+        waiting_blocks: [],
+        rendering_blocks: {},
+        finished_pixels: []
+      },
+      metadata: {
+        width,
+        height,
+        pixel_count: width * height
+      }
+    * */
+    const results = await db("job")
+      .where({ user_id })
+      .select(
+        "id",
+        "status",
+        "created_at",
+        "started_at",
+        "ended_at",
+        "metadata"
+      );
 
     return { results, count: results.length };
   },
-  async get(user_id, id) {
-    for (const scene of scenes)
-      if (scene.id === id && scene.user_id === user_id) {
-        const job = Rendero.getRenderJob(id);
-
-        scene.status = job.status;
-
-        return {
-          ...scene,
-          render: job.render,
-          renderedPixelCount: job.renderedPixelCount,
-          pixelCount: job.pixelCount
-        };
-      }
-
-    return {};
+  getAllWithoutFilter() {
+    return db("job")
+      .select("*")
+      .where({ status: "rendering" })
+      .orWhere({ status: "waiting_workers" });
   },
-  async create(user_id, sceneObj) {
-    const scene = {
-      id: Date.now().toString(),
-      user_id,
-      created_at: new Date().toISOString(),
-      started_at: new Date().toISOString(),
-      updated_at: null,
-      ended_at: null,
-      status: "created",
-      render: null
-    };
+  async get(user_id, id) {
+    return db("job")
+      .where({ user_id, id })
+      .select(
+        "id",
+        "status",
+        "created_at",
+        "started_at",
+        "ended_at",
+        "metadata",
+        "render",
+        "scene"
+      )
+      .first();
+  },
+  async create(user_id, job) {
+    await db("job").insert(job);
 
-    scenes.push(scene);
-
-    Rendero.addRenderJob(scene.id, sceneObj);
-
-    return scene;
+    return job;
+  },
+  async updateAndReturn(user_id, id, params) {
+    return db("job")
+      .where({ user_id, id })
+      .update(params)
+      .returning("*")
+      .first();
+  },
+  async update(user_id, id, params) {
+    return db("job")
+      .where({ user_id, id })
+      .update(params)
+      .timeout(300000);
   }
 };
 

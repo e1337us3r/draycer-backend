@@ -14,8 +14,13 @@
     "express": "^4.17.1",
     "express-promise-router": "^3.0.3",
     "jimp": "^0.9.3",
+    "knex": "^0.21.1",
+    "nanoid": "^3.1.7",
     "nodemon": "^2.0.2",
+    "pg": "^8.1.0",
     "pino": "^5.17.0",
+    "redis": "^3.0.2",
+    "semver": "^7.3.2",
     "socket.io": "^2.3.0"
   },
   "devDependencies": {

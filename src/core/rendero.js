@@ -8,39 +8,25 @@ const BLOCK_WIDTH = 50;
 const BLOCK_HEIGHT = 50;
 
 const Rendero = {
-  addRenderJob: (id, scene) => {
-    const canRender = workerPool.length > 0;
-    const WIDTH = scene.WIDTH;
-    const HEIGHT = scene.HEIGHT;
-
-    const job = {
-      id,
-      scene,
-      render: null,
-      pixelCount: WIDTH * HEIGHT,
-      renderedPixelCount: 0,
-      status: "waiting_workers",
-      WIDTH,
-      HEIGHT,
-      waitingBlocks: [],
-      renderingBlocks: {},
-      finishedPixels: []
-    };
-
-    Logger.info({ event: "JOB_CREATED", id: job.id });
-
-    for (let y = 0; y < HEIGHT; y += BLOCK_HEIGHT) {
-      for (let x = 0; x < WIDTH; x += BLOCK_WIDTH) {
-        job.waitingBlocks.push({
-          p1: { x, y },
-          p2: { x: x + BLOCK_WIDTH, y: y + BLOCK_HEIGHT }
-        });
+  createRenderBlocks(height, width) {
+    const results = [];
+    for (let y = 0; y < height; y += BLOCK_HEIGHT) {
+      for (let x = 0; x < width; x += BLOCK_WIDTH) {
+        results.push([x, y, x + BLOCK_WIDTH, y + BLOCK_HEIGHT]);
       }
     }
+    return results;
+  },
+  areWorkersAvailable() {
+    return workerPool.length > 0;
+  },
+  addRenderJobsToQueue(jobs) {
+    waitingRenderQueue.push(...jobs);
+  },
+  addRenderJobToQueue: job => {
+    const canRender = Rendero.areWorkersAvailable();
 
-    Logger.debug({ event: "JOB_BLOCKS_CREATED", job });
-
-    renderJobs[id] = job;
+    Logger.info({ event: "JOB_ADDED_TO_QUEUE", id: job.id });
 
     waitingRenderQueue.push(job);
 
@@ -50,34 +36,29 @@ const Rendero = {
       }
   },
   startRender: (job, worker) => {
-    Logger.info({ event: "JOB_RENDERING", id: job.id });
-    const { scene, id, waitingBlocks, renderingBlocks, WIDTH, HEIGHT } = job;
-    job.status = "rendering";
+    SceneService.startJob(job).then(updatedJob => {
+      job = updatedJob;
+      renderJobs[job.id] = job;
+      Logger.info({ event: "JOB_RENDERING", id: job.id });
 
-    const block = waitingBlocks.pop();
-    const blockId = `${block.p1.x},${block.p1.y}`;
+      const block = job.render_state.waiting_blocks.pop();
+      const blockId = `${block[0]}:${block[1]}`;
 
-    renderingBlocks[blockId] = block;
+      job.render_state.rendering_blocks[blockId] = block;
 
-    worker.assignedBlocks[blockId] = { ...block, jobId: id };
+      worker.assignedBlocks[blockId] = { ...block, jobId: job.id };
 
-    worker.emit("RENDER_BLOCK", {
-      scene,
-      xStart: block.p1.x,
-      yStart: block.p1.y,
-      yEnd: block.p2.y,
-      xEnd: block.p2.x,
-      height: HEIGHT,
-      width: WIDTH,
-      jobId: id,
-      blockId
+      worker.emit("RENDER_BLOCK", {
+        block,
+        height: job.metadata.height,
+        width: job.metadata.width,
+        jobId: job.id,
+        blockId
+      });
     });
   },
-  getRenderJob: id => {
-    return renderJobs[id];
-  },
   registerWorkerListener: worker => {
-    worker.on("BLOCK_RENDERED", result => {
+    worker.on("BLOCK_RENDERED", async result => {
       const { jobId, blockId, renders } = result;
 
       const job = renderJobs[jobId];
@@ -86,23 +67,25 @@ const Rendero = {
 
       Logger.info({ event: "BLOCK_RENDERED", id: jobId });
 
-      delete job.renderingBlocks[blockId];
+      delete job.render_state.rendering_blocks[blockId];
 
       delete worker.assignedBlocks[blockId];
 
-      job.finishedPixels.push(...renders);
+      job.render_state.finished_pixels.push(...renders);
 
-      job.renderedPixelCount += renders.length;
+      job.metadata.rendered_pixel_count += renders.length;
 
       Logger.info(
-        `waitingblocks: ${job.waitingBlocks.length}  renderingBlocks: ${
-          Object.keys(job.renderingBlocks).length
+        `waitingblocks: ${
+          job.render_state.waiting_blocks.length
+        }  renderingBlocks: ${
+          Object.keys(job.render_state.rendering_blocks).length
         }`
       );
 
       if (
-        job.waitingBlocks.length === 0 &&
-        Object.keys(job.renderingBlocks).length === 0
+        job.render_state.waiting_blocks.length === 0 &&
+        Object.keys(job.render_state.rendering_blocks).length === 0
       ) {
         // render has finished
         Logger.info({ event: "RENDER_COMPLETED", id: job.id });
@@ -110,37 +93,69 @@ const Rendero = {
         // remove job from que
         waitingRenderQueue.shift();
 
-        new Jimp(job.WIDTH, job.HEIGHT, 0x000000ff, (err, image) => {
-          if (err) {
-            job.status = "error#001";
-            throw err;
+        new Jimp(
+          job.metadata.width,
+          job.metadata.height,
+          0x000000ff,
+          (err, image) => {
+            if (err) {
+              job.status = "error#001";
+              throw err;
+            }
+
+            Logger.info({ event: "RENDER_WRITING_PIXELS", id: job.id });
+            for (const pixel of job.render_state.finished_pixels) {
+              image.setPixelColor(
+                Jimp.rgbaToInt(pixel[2], pixel[3], pixel[4], 255),
+                pixel[0],
+                pixel[1]
+              );
+            }
+
+            Logger.info({
+              event: "RENDER_WRITING_PIXELS_COMPLETED",
+              id: job.id
+            });
+            Logger.info({ event: "RENDER_CREATING_PNG", id: job.id });
+            image.getBase64(Jimp.MIME_PNG, (err, png) => {
+              if (err) throw err;
+
+              // free big objects from memory
+              delete renderJobs[job.id];
+              SceneService.endJob(job, png)
+                .then(() => {
+                  Logger.info({ event: "RENDER_RESULT_SAVED", id: job.id });
+                })
+                .catch(e => {
+                  console.log("save", e);
+                });
+
+              Logger.info({
+                event: "RENDER_CREATING_PNG_COMPLETED",
+                id: job.id
+              });
+            });
           }
-
-          Logger.info({ event: "RENDER_WRITING_PIXELS", id: job.id });
-          for (const pixel of job.finishedPixels) {
-            const { coord, color } = pixel;
-            image.setPixelColor(
-              Jimp.rgbaToInt(color.r, color.g, color.b, 255),
-              coord.x,
-              coord.y
-            );
-          }
-
-          Logger.info({ event: "RENDER_WRITING_PIXELS_COMPLETED", id: job.id });
-          Logger.info({ event: "RENDER_CREATING_PNG", id: job.id });
-          image.getBase64(Jimp.MIME_PNG, (err, png) => {
-            if (err) throw err;
-
-            job.status = "completed";
-            job.render = png;
-
-            // free big objects from memory
-            job.scene = null;
-
-            Logger.info({ event: "RENDER_CREATING_PNG_COMPLETED", id: job.id });
-          });
-        });
-      } else if (job.waitingBlocks.length > 0) {
+        );
+      } else if (job.render_state.waiting_blocks.length > 0) {
+        // render_state is a huge object, frequent updates destroys db connection.
+        // we chose to limit this state update to 10 times per render
+        const last_save_percent = job.last_save_percent
+          ? job.last_save_percent
+          : 0;
+        const current_save_percent =
+          job.metadata.rendered_pixel_count / job.metadata.pixel_count;
+        if (current_save_percent >= last_save_percent + 0.05) {
+          job.last_save_percent = parseFloat(current_save_percent.toFixed(1));
+          SceneService.updateJobProgress(job)
+            .then(() => {
+              Logger.info({ event: "RENDER_STATE_SAVED", id: job.id });
+            })
+            .catch(e => {
+              console.log("update state failed", e);
+              job.last_save_percent = last_save_percent;
+            });
+        }
         Rendero.startRender(job, worker);
       }
     });
@@ -151,7 +166,7 @@ const Rendero = {
     // try to find a job with waiting blocks and assign the worker
     if (waitingRenderQueue.length > 0)
       for (const waitingRenderQueueElement of waitingRenderQueue) {
-        if (waitingRenderQueueElement.waitingBlocks.length > 0)
+        if (waitingRenderQueueElement.render_state.waiting_blocks.length > 0)
           Rendero.startRender(waitingRenderQueueElement, worker);
       }
   },
@@ -163,9 +178,9 @@ const Rendero = {
         if (job) {
           // remove job from rendering blocks and add it back to waiting blocks
           // so that it can be rendered by another
-          delete job.renderingBlocks[assignedBlockId];
+          delete job.render_state.rendering_blocks[assignedBlockId];
           delete assignedBlock.jobId;
-          job.waitingBlocks.push(assignedBlock);
+          job.render_state.waiting_blocks.push(assignedBlock);
         }
       }
     }
@@ -178,3 +193,5 @@ registerNewSocketListener(
 );
 
 module.exports = Rendero;
+
+var SceneService = require("../api/scene/v1/scene.service");

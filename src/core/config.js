@@ -13,7 +13,24 @@ const CONFIG = {
   port: process.env.PORT ? Number(process.env.PORT) : 7878,
   isProd,
   dbUri: process.env.DB_URI,
-  redisUri: process.env.REDIS_URI
+  redisUri: process.env.REDIS_URI,
+  knex: {
+    client: "pg",
+    asyncStackTraces: true,
+    connection:
+      process.env.DB_URI ||
+      "postgres://postgres:postgres_password@localhost:7879/postgres",
+    debug: false,
+    pool: {
+      max: 10,
+      min: 2,
+      idleTimeoutMillis: 300000,
+      reapIntervalMillis: 300000,
+      destroyTimeoutMillis: 300000,
+      createRetryIntervalMillis: 30000
+    },
+    acquireConnectionTimeout: 300000
+  }
 };
 
 CONFIG.logger.timestamp = () => {
