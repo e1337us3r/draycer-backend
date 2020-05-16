@@ -1,6 +1,6 @@
 const Logger = require("./logger");
 const { workerPool, registerNewSocketListener } = require("./socketmaster");
-const createPNG = require("../utils/createPNG");
+const saveProgressQueue = require("./queue");
 
 const waitingRenderQueue = [];
 const renderJobs = {};
@@ -99,10 +99,9 @@ const Rendero = {
         // remove job from que
         waitingRenderQueue.shift();
 
-        const png = await createPNG(job);
-        await SceneService.endJob(job, png);
+        saveProgressQueue.add(job);
         delete renderJobs[job.id];
-        Logger.info({ event: "RENDER_RESULT_SAVED", id: job.id });
+        Logger.info({ event: "RENDER_RESULT_SAVE_QUEUED", id: job.id });
       } else if (job.render_state.waiting_blocks.length > 0) {
         // render_state is a huge object, frequent updates destroys db connection.
         // we chose to limit this state update to 10 times per render
@@ -112,10 +111,9 @@ const Rendero = {
         const current_save_percent =
           job.metadata.rendered_pixel_count / job.metadata.pixel_count;
         if (current_save_percent >= last_save_percent + 0.05) {
-          job.render = await createPNG(job);
-          await SceneService.updateJobProgress(job);
+          saveProgressQueue.add(job);
           job.last_save_percent = parseFloat(current_save_percent.toFixed(1));
-          Logger.info({ event: "RENDER_STATE_SAVED", id: job.id });
+          Logger.info({ event: "RENDER_STATE_SAVE_QUEUED", id: job.id });
         }
         Rendero.startRender(job, worker);
       }
