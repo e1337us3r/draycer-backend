@@ -2,24 +2,6 @@ const db = require("../../../db");
 
 const SceneRepository = {
   async getAll(user_id) {
-    /*
-    user_id,
-      id: generateId(),
-      scene,
-      created_at: timestamp,
-      status: "waiting_workers",
-      render_state: {
-        rendered_pixel_count: 0,
-        waiting_blocks: [],
-        rendering_blocks: {},
-        finished_pixels: []
-      },
-      metadata: {
-        width,
-        height,
-        pixel_count: width * height
-      }
-    * */
     const results = await db("job")
       .where({ user_id })
       .select(

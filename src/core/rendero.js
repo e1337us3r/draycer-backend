@@ -1,6 +1,6 @@
-const Jimp = require("jimp");
 const Logger = require("./logger");
 const { workerPool, registerNewSocketListener } = require("./socketmaster");
+const createPNG = require("../utils/createPNG");
 
 const waitingRenderQueue = [];
 const renderJobs = {};
@@ -8,6 +8,12 @@ const BLOCK_WIDTH = 50;
 const BLOCK_HEIGHT = 50;
 
 const Rendero = {
+  removeJob(id) {
+    delete renderJobs[id];
+    waitingRenderQueue.filter(job => {
+      return job.id !== id;
+    });
+  },
   createRenderBlocks(height, width) {
     const results = [];
     for (let y = 0; y < height; y += BLOCK_HEIGHT) {
@@ -93,68 +99,23 @@ const Rendero = {
         // remove job from que
         waitingRenderQueue.shift();
 
-        new Jimp(
-          job.metadata.width,
-          job.metadata.height,
-          0x000000ff,
-          (err, image) => {
-            if (err) {
-              job.status = "error#001";
-              throw err;
-            }
-
-            Logger.info({ event: "RENDER_WRITING_PIXELS", id: job.id });
-            for (const pixel of job.render_state.finished_pixels) {
-              image.setPixelColor(
-                Jimp.rgbaToInt(pixel[2], pixel[3], pixel[4], 255),
-                pixel[0],
-                pixel[1]
-              );
-            }
-
-            Logger.info({
-              event: "RENDER_WRITING_PIXELS_COMPLETED",
-              id: job.id
-            });
-            Logger.info({ event: "RENDER_CREATING_PNG", id: job.id });
-            image.getBase64(Jimp.MIME_PNG, (err, png) => {
-              if (err) throw err;
-
-              // free big objects from memory
-              delete renderJobs[job.id];
-              SceneService.endJob(job, png)
-                .then(() => {
-                  Logger.info({ event: "RENDER_RESULT_SAVED", id: job.id });
-                })
-                .catch(e => {
-                  console.log("save", e);
-                });
-
-              Logger.info({
-                event: "RENDER_CREATING_PNG_COMPLETED",
-                id: job.id
-              });
-            });
-          }
-        );
+        const png = await createPNG(job);
+        await SceneService.endJob(job, png);
+        delete renderJobs[job.id];
+        Logger.info({ event: "RENDER_RESULT_SAVED", id: job.id });
       } else if (job.render_state.waiting_blocks.length > 0) {
         // render_state is a huge object, frequent updates destroys db connection.
         // we chose to limit this state update to 10 times per render
-        const last_save_percent = job.last_save_percent
+        let last_save_percent = job.last_save_percent
           ? job.last_save_percent
           : 0;
         const current_save_percent =
           job.metadata.rendered_pixel_count / job.metadata.pixel_count;
         if (current_save_percent >= last_save_percent + 0.05) {
+          job.render = await createPNG(job);
+          await SceneService.updateJobProgress(job);
           job.last_save_percent = parseFloat(current_save_percent.toFixed(1));
-          SceneService.updateJobProgress(job)
-            .then(() => {
-              Logger.info({ event: "RENDER_STATE_SAVED", id: job.id });
-            })
-            .catch(e => {
-              console.log("update state failed", e);
-              job.last_save_percent = last_save_percent;
-            });
+          Logger.info({ event: "RENDER_STATE_SAVED", id: job.id });
         }
         Rendero.startRender(job, worker);
       }

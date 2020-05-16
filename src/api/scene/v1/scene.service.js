@@ -68,6 +68,19 @@ const SceneService = {
 
     return { ...job, params };
   },
+  async pauseJob(user_id, id) {
+    await SceneRepository.update(user_id, id, {
+      status: "paused"
+    });
+    Rendero.removeJob(id);
+  },
+  async continueJob(user_id, id) {
+    const job = await SceneRepository.updateAndReturn(user_id, id, {
+      status: "rendering"
+    });
+
+    Rendero.addRenderJobToQueue(job);
+  },
   async updateJobProgress(job) {
     const render_state = { ...job.render_state };
     render_state.waiting_blocks.push(
@@ -76,7 +89,8 @@ const SceneService = {
     render_state.rendering_blocks = {};
     await SceneRepository.update(job.user_id, job.id, {
       render_state: render_state,
-      metadata: job.metadata
+      metadata: job.metadata,
+      render: job.render
     });
   },
   async addAllJobsToQueue() {
