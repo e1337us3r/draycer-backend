@@ -1,6 +1,6 @@
 const Logger = require("./logger");
 const { workerPool, registerNewSocketListener } = require("./socketmaster");
-const saveProgressQueue = require("./queue");
+const { saveProgressQueue, saveWorkRecordQueue } = require("./queue");
 
 const waitingRenderQueue = [];
 const renderJobs = {};
@@ -72,6 +72,12 @@ const Rendero = {
       if (!job) return;
 
       Logger.info({ event: "BLOCK_RENDERED", id: jobId });
+
+      saveWorkRecordQueue.add({
+        user_id: job.user_id,
+        job_id: job.id,
+        last_block_id: blockId
+      });
 
       delete job.render_state.rendering_blocks[blockId];
 

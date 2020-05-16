@@ -24,6 +24,11 @@ const SceneController = {
     router.get(SceneController.path + "/:id", async (req, res) => {
       res.send(await SceneService.get(req.state.user_id, req.params.id));
     });
+
+
+    router.get(SceneController.path + "/:id/work_record", async (req, res) => {
+      res.send(await SceneService.getWorkRecords(req.state.user_id, req.params.id));
+    });
   }
 };
 

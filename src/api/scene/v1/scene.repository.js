@@ -53,6 +53,13 @@ const SceneRepository = {
       .where({ user_id, id })
       .update(params)
       .timeout(300000);
+  },
+  async getWorkRecords(user_id, id) {
+    const results = await db("work_record")
+      .where({ job_id: id, user_id })
+      .select("*");
+
+    return { results, count: results.length };
   }
 };
 
