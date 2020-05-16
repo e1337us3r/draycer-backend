@@ -97,6 +97,9 @@ const SceneService = {
     const jobs = await SceneRepository.getAllWithoutFilter();
 
     Rendero.addRenderJobsToQueue(jobs);
+  },
+  getWorkRecords(user_id, id) {
+    return SceneRepository.getWorkRecords(user_id, id);
   }
 };
 
