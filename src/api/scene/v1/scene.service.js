@@ -78,8 +78,9 @@ const SceneService = {
     const job = await SceneRepository.updateAndReturn(user_id, id, {
       status: "rendering"
     });
-
-    Rendero.addRenderJobToQueue(job);
+    if (Array.isArray(job) && job.length === 1) {
+      Rendero.addRenderJobToQueue(job[0]);
+    }
   },
   async updateJobProgress(job) {
     const render_state = { ...job.render_state };
@@ -87,6 +88,7 @@ const SceneService = {
       Object.values(render_state.rendering_blocks)
     );
     render_state.rendering_blocks = {};
+    job.metadata.rendered_pixel_count = job.render_state.finished_pixels.length;
     await SceneRepository.update(job.user_id, job.id, {
       render_state: render_state,
       metadata: job.metadata,

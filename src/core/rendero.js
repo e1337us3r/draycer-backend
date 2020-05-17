@@ -2,16 +2,23 @@ const Logger = require("./logger");
 const { workerPool, registerNewSocketListener } = require("./socketmaster");
 const { saveProgressQueue, saveWorkRecordQueue } = require("./queue");
 
-const waitingRenderQueue = [];
+let waitingRenderQueue = [];
 const renderJobs = {};
 const BLOCK_WIDTH = 50;
 const BLOCK_HEIGHT = 50;
 
 const Rendero = {
   removeJob(id) {
-    delete renderJobs[id];
-    waitingRenderQueue.filter(job => {
-      return job.id !== id;
+    Logger.info({ event: "JOB_PAUSED", id });
+    const job = renderJobs[id];
+    if (job) {
+      job.status = "paused";
+      saveProgressQueue.add(job);
+      delete renderJobs[id];
+    }
+
+    waitingRenderQueue = waitingRenderQueue.filter(jobb => {
+      return jobb.id !== id;
     });
   },
   createRenderBlocks(height, width) {
@@ -71,6 +78,9 @@ const Rendero = {
 
       if (!job) return;
 
+      // Ignore this block if job is not in rendering status
+      if (job.status !== "rendering") return;
+
       Logger.info({ event: "BLOCK_RENDERED", id: jobId });
 
       saveWorkRecordQueue.add({
@@ -84,8 +94,6 @@ const Rendero = {
       delete worker.assignedBlocks[blockId];
 
       job.render_state.finished_pixels.push(...renders);
-
-      job.metadata.rendered_pixel_count += renders.length;
 
       Logger.info(
         `waitingblocks: ${
@@ -113,11 +121,13 @@ const Rendero = {
         // we chose to limit this state update to 10 times per render
         let last_save_percent = job.last_save_percent
           ? job.last_save_percent
-          : 0;
+          : job.metadata.rendered_pixel_count / job.metadata.pixel_count;
         const current_save_percent =
-          job.metadata.rendered_pixel_count / job.metadata.pixel_count;
+          job.render_state.finished_pixels.length / job.metadata.pixel_count;
         if (current_save_percent >= last_save_percent + 0.05) {
           saveProgressQueue.add(job);
+          job.metadata.rendered_pixel_count =
+            job.render_state.finished_pixels.length;
           job.last_save_percent = parseFloat(current_save_percent.toFixed(1));
           Logger.info({ event: "RENDER_STATE_SAVE_QUEUED", id: job.id });
         }

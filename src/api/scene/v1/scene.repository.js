@@ -45,8 +45,7 @@ const SceneRepository = {
     return db("job")
       .where({ user_id, id })
       .update(params)
-      .returning("*")
-      .first();
+      .returning("*");
   },
   async update(user_id, id, params) {
     return db("job")
