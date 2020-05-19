@@ -11,7 +11,8 @@ const SceneRepository = {
         "started_at",
         "ended_at",
         "metadata"
-      );
+      )
+      .orderBy("created_at", "desc");
 
     return { results, count: results.length };
   },

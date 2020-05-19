@@ -85,7 +85,7 @@ const SceneService = {
   async updateJobProgress(job) {
     const render_state = { ...job.render_state };
     render_state.waiting_blocks.push(
-      Object.values(render_state.rendering_blocks)
+      ...Object.values(render_state.rendering_blocks)
     );
     render_state.rendering_blocks = {};
     job.metadata.rendered_pixel_count = job.render_state.finished_pixels.length;

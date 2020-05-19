@@ -52,10 +52,10 @@ const Rendero = {
     SceneService.startJob(job).then(updatedJob => {
       job = updatedJob;
       renderJobs[job.id] = job;
-      Logger.info({ event: "JOB_RENDERING", id: job.id });
 
       const block = job.render_state.waiting_blocks.pop();
       const blockId = `${block[0]}:${block[1]}`;
+      Logger.info({ event: "JOB_RENDERING", id: job.id, blockId });
 
       job.render_state.rendering_blocks[blockId] = block;
 
@@ -73,6 +73,7 @@ const Rendero = {
   registerWorkerListener: worker => {
     worker.on("BLOCK_RENDERED", async result => {
       const { jobId, blockId, renders } = result;
+      delete worker.assignedBlocks[blockId];
 
       const job = renderJobs[jobId];
 
@@ -81,7 +82,12 @@ const Rendero = {
       // Ignore this block if job is not in rendering status
       if (job.status !== "rendering") return;
 
-      Logger.info({ event: "BLOCK_RENDERED", id: jobId });
+      Logger.info({
+        event: "BLOCK_RENDERED",
+        id: jobId,
+        blockId,
+        waitingBlocks: job.render_state.waiting_blocks.length
+      });
 
       saveWorkRecordQueue.add({
         user_id: job.user_id,
@@ -91,17 +97,7 @@ const Rendero = {
 
       delete job.render_state.rendering_blocks[blockId];
 
-      delete worker.assignedBlocks[blockId];
-
       job.render_state.finished_pixels.push(...renders);
-
-      Logger.info(
-        `waitingblocks: ${
-          job.render_state.waiting_blocks.length
-        }  renderingBlocks: ${
-          Object.keys(job.render_state.rendering_blocks).length
-        }`
-      );
 
       if (
         job.render_state.waiting_blocks.length === 0 &&
