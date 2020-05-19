@@ -22,9 +22,9 @@ const SceneRepository = {
       .where({ status: "rendering" })
       .orWhere({ status: "waiting_workers" });
   },
-  async get(user_id, id) {
+  async get(id) {
     return db("job")
-      .where({ user_id, id })
+      .where({ id })
       .select(
         "id",
         "status",

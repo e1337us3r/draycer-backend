@@ -2,8 +2,8 @@ const SceneRepository = require("./scene.repository");
 const generateId = require("../../../utils/id.gen");
 
 const SceneService = {
-  async get(user_id, id) {
-    return await SceneRepository.get(user_id, id);
+  async get(id) {
+    return await SceneRepository.get(id);
   },
   async getAll(user_id) {
     return SceneRepository.getAll(user_id);
@@ -61,7 +61,8 @@ const SceneService = {
       params = {
         ended_at: new Date().toISOString(),
         status: "completed",
-        render
+        render,
+        render_state: null
       };
       await SceneRepository.update(job.user_id, job.id, params);
     }
