@@ -22,19 +22,20 @@ const SceneRepository = {
       .where({ status: "rendering" })
       .orWhere({ status: "waiting_workers" });
   },
-  async get(id) {
+  async get(id, selectScene) {
+    const columns = [
+      "id",
+      "status",
+      "created_at",
+      "started_at",
+      "ended_at",
+      "metadata",
+      "render"
+    ];
+    if (selectScene) columns.push("scene");
     return db("job")
       .where({ id })
-      .select(
-        "id",
-        "status",
-        "created_at",
-        "started_at",
-        "ended_at",
-        "metadata",
-        "render",
-        "scene"
-      )
+      .select(columns)
       .first();
   },
   async create(user_id, job) {

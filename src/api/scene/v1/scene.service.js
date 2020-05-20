@@ -2,8 +2,8 @@ const SceneRepository = require("./scene.repository");
 const generateId = require("../../../utils/id.gen");
 
 const SceneService = {
-  async get(id) {
-    return await SceneRepository.get(id);
+  async get(id, raw) {
+    return await SceneRepository.get(id, raw == "true");
   },
   async getAll(user_id) {
     return SceneRepository.getAll(user_id);

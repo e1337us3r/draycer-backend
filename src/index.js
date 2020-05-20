@@ -15,7 +15,7 @@ const SceneService = require("./api/scene/v1/scene.service");
 (async () => {
   const app = Express();
   const server = http.createServer(app);
-  const io = SocketIo(server);
+  const io = SocketIo(server, {pingInterval: 50000, pingTimeout: 120000});
 
   await db.initializeDb();
   await SceneService.addAllJobsToQueue();
