@@ -4,7 +4,8 @@ const UserRepository = {
   async getWorkRecords(user_id) {
     const results = await db("work_record")
       .where({ user_id })
-      .select("*");
+      .select("*")
+      .orderBy("last_render_at", "desc");
 
     return { results, count: results.length };
   },

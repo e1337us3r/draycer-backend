@@ -9,11 +9,16 @@ const SocketMaster = {
 
     io.on("connection", socket => {
       Logger.info({ event: "WORKER_CONNECTED" });
-      this.newSocketConnected(socket);
 
       socket.on("disconnect", () => {
         Logger.info({ event: "WORKER_DISCONNECTED" });
         this.socketDisconnected(socket);
+      });
+
+      socket.on("join", (data) => {
+        Logger.info({ event: "WORKER_JOINED_POOL" });
+        socket.userId = data.userId;
+        this.newSocketConnected(socket);
       });
     });
   },

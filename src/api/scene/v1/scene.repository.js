@@ -57,8 +57,9 @@ const SceneRepository = {
   },
   async getWorkRecords(user_id, id) {
     const results = await db("work_record")
-      .where({ job_id: id, user_id })
-      .select("*");
+      .where({ job_id: id })
+      .select("*")
+      .orderBy("last_render_at", "desc");
 
     return { results, count: results.length };
   }

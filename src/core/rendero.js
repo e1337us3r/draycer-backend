@@ -90,7 +90,7 @@ const Rendero = {
       });
 
       saveWorkRecordQueue.add({
-        user_id: job.user_id,
+        user_id: worker.userId,
         job_id: job.id,
         last_block_id: blockId
       });
